@@ -1,20 +1,20 @@
 {
   "account_mapping": {
     "trend_following": {
-      "strategy_name": "Trend Following Strategy",
+      "strategy_name": "Trend Following Strategy", 
       "demo_account_id": "",
-      "assets": ["EURUSD", "BITCOIN"],
-      "description": "SMA50/SMA200 + MACD + LSTM confirmation",
+      "assets": ["EURUSD=X", "BTC-USD"],
+      "description": "SMA50/SMA200 + MACD + AI confirmation",
       "enabled": true,
       "max_position_size_percent": 4.0,
       "stop_loss_percent": 2.0,
       "take_profit_percent": 3.0
     },
     "mean_reversion": {
-      "strategy_name": "Mean Reversion Strategy", 
+      "strategy_name": "Mean Reversion Strategy",
       "demo_account_id": "",
-      "assets": ["GERMANY30", "GOLD"],
-      "description": "Bollinger Bands + RSI + RandomForest classifier",
+      "assets": ["^GDAXI", "GC=F"],
+      "description": "Bollinger Bands + RSI + AI classifier",
       "enabled": true,
       "max_position_size_percent": 4.0,
       "stop_loss_percent": 1.5,
@@ -23,8 +23,8 @@
     "breakout": {
       "strategy_name": "Breakout Strategy",
       "demo_account_id": "",
-      "assets": ["US100", "TESLA"],
-      "description": "Donchian(20) + Volume filter + XGBoost",
+      "assets": ["^NDX", "TSLA"],
+      "description": "Donchian(20) + Volume filter + AI confirmation",
       "enabled": true,
       "max_position_size_percent": 5.0,
       "stop_loss_percent": 2.5,
@@ -33,7 +33,7 @@
     "news_trading": {
       "strategy_name": "News/Event Trading",
       "demo_account_id": "",
-      "assets": ["EURUSD", "OIL_CRUDE"],
+      "assets": ["EURUSD=X", "CL=F"],
       "description": "Economic calendar + NLP sentiment analysis",
       "enabled": true,
       "max_position_size_percent": 3.0,
@@ -54,12 +54,18 @@
     }
   },
   "epic_mapping": {
-    "EURUSD": "EURUSD",
-    "BITCOIN": "BITCOIN", 
-    "GERMANY30": "GERMANY30",
-    "GOLD": "GOLD",
-    "US100": "US100",
-    "TESLA": "TESLA",
-    "OIL_CRUDE": "OIL_CRUDE"
+    "EURUSD=X": "EURUSD",
+    "BTC-USD": "BITCOIN", 
+    "^GDAXI": "GERMANY30",
+    "GC=F": "GOLD",
+    "^NDX": "US100",
+    "TSLA": "TESLA",
+    "CL=F": "OIL_CRUDE"
+  },
+  "ticker_corrections": {
+    "old": ["EURUSD", "BITCOIN", "GERMANY30", "GOLD", "US100", "TESLA", "OIL_CRUDE"],
+    "new": ["EURUSD=X", "BTC-USD", "^GDAXI", "GC=F", "^NDX", "TSLA", "CL=F"],
+    "updated": "2025-09-24",
+    "reason": "Yahoo Finance Ticker Correction"
   }
 }
