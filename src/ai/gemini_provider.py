@@ -30,7 +30,7 @@ class GeminiProvider(BaseAIProvider):
         genai.configure(api_key=self.api_key)
         
         # Model Configuration
-        self.model_name = config.get('model', 'gemini-pro')
+        self.model_name = config.get('model', 'gemini-1.5-flash')
         self.temperature = config.get('temperature', 0.3)
         self.max_output_tokens = config.get('max_output_tokens', 1000)
         
