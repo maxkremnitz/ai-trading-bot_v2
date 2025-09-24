@@ -1,7 +1,6 @@
-
 """
 Base Strategy Class
-Abstrakte Basis-Klasse für alle Trading-Strategien
+Abstrakte Basis-Klasse für alle Trading-Strategien mit Handelszeiten-Beschränkung
 """
 
 import time
@@ -12,6 +11,8 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 import pandas as pd
 import numpy as np
+from datetime import datetime, time as dt_time
+from pytz import timezone
 
 from ..ai.voting_system import AIVotingSystem, ConsensusSignal
 from ..ai.base_provider import MarketData, SignalType
@@ -25,6 +26,7 @@ class StrategyStatus(Enum):
     INACTIVE = "INACTIVE"
     ERROR = "ERROR"
     PAUSED = "PAUSED"
+    OUT_OF_HOURS = "OUT_OF_HOURS"
 
 @dataclass
 class StrategySignal:
@@ -41,11 +43,11 @@ class StrategySignal:
     technical_data: Dict[str, float]
     ai_consensus: Optional[ConsensusSignal] = None
     timestamp: float = None
-    
+
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = time.time()
-    
+
     @property
     def is_executable(self) -> bool:
         """Prüft ob Signal ausführbar ist"""
@@ -61,14 +63,43 @@ class BaseStrategy(ABC):
     Abstrakte Basis-Klasse für Trading-Strategien
     Integriert AI Consensus Voting und Capital.com API
     """
-    
-    def __init__(self, name: str, config: Dict[str, Any], ai_voting_system: AIVotingSystem, 
+
+    # Handelszeiten pro Asset-Klasse (UTC)
+    MARKET_HOURS = {
+        'forex': {
+            'open': dt_time(0, 0),  # 24/5
+            'close': dt_time(23, 59),
+            'weekdays': [0, 1, 2, 3, 4]  # Montag-Freitag
+        },
+        'crypto': {
+            'open': dt_time(0, 0),  # 24/7
+            'close': dt_time(23, 59),
+            'weekdays': [0, 1, 2, 3, 4, 5, 6]
+        },
+        'stocks': {
+            'open': dt_time(13, 30),  # 9:30 ET = 13:30 UTC
+            'close': dt_time(20, 0),  # 16:00 ET = 20:00 UTC
+            'weekdays': [0, 1, 2, 3, 4]  # Montag-Freitag
+        },
+        'commodities': {
+            'open': dt_time(1, 0),  # 23:00 ET Vorabend = 1:00 UTC
+            'close': dt_time(23, 30),  # 19:30 ET = 23:30 UTC
+            'weekdays': [0, 1, 2, 3, 4]
+        },
+        'indices': {
+            'open': dt_time(1, 0),  # Vorbörse
+            'close': dt_time(22, 0),  # Nachbörse
+            'weekdays': [0, 1, 2, 3, 4]
+        }
+    }
+
+    def __init__(self, name: str, config: Dict[str, Any], ai_voting_system: AIVotingSystem,
                  capital_api: CapitalComAPI):
         self.name = name
         self.config = config
         self.ai_voting_system = ai_voting_system
         self.capital_api = capital_api
-        
+
         # Strategy Configuration
         self.enabled = config.get('enabled', True)
         self.assets = config.get('assets', [])
@@ -76,102 +107,141 @@ class BaseStrategy(ABC):
         self.stop_loss_percent = config.get('stop_loss_percent', 2.0)
         self.take_profit_percent = config.get('take_profit_percent', 3.0)
         self.min_confidence = config.get('min_confidence', 65.0)
-        
+
         # Strategy State
         self.status = StrategyStatus.INACTIVE
         self.last_analysis_time = 0
         self.last_trade_time = 0
         self.analysis_interval = config.get('analysis_interval_minutes', 30) * 60
         self.min_trade_interval = config.get('min_trade_interval_minutes', 60) * 60
-        
+
         # Performance Tracking
         self.total_signals = 0
         self.executed_trades = 0
         self.successful_trades = 0
         self.total_pnl = 0.0
-        
+
         # Data Storage
         self.market_data_cache = {}
         self.recent_signals = []
         self.active_positions = []
-        
+
+        # Asset-Klassifizierung für Handelszeiten
+        self.asset_classes = self._classify_assets()
+
         logger.info(f"Strategy {self.name} initialisiert für Assets: {self.assets}")
-    
+
+    def _classify_assets(self) -> Dict[str, str]:
+        """Klassifiziert Assets für Handelszeiten"""
+        asset_class_map = {}
+
+        # Standard-Klassifizierung (kann in Config überschrieben werden)
+        for asset in self.assets:
+            if asset.endswith('=X') or asset.endswith('USD') or asset.endswith('EUR'):
+                asset_class_map[asset] = 'forex'
+            elif asset.endswith('BTC') or asset.endswith('ETH') or 'USDT' in asset:
+                asset_class_map[asset] = 'crypto'
+            elif asset.startswith('^') or 'INDEX' in asset.upper():
+                asset_class_map[asset] = 'indices'
+            elif asset.endswith('=F') or 'FUTURE' in asset.upper():
+                asset_class_map[asset] = 'commodities'
+            else:
+                asset_class_map[asset] = 'stocks'
+
+        # Config-Override falls vorhanden
+        if 'asset_classes' in self.config:
+            asset_class_map.update(self.config['asset_classes'])
+
+        return asset_class_map
+
+    def _is_market_open(self, asset: str) -> bool:
+        """Prüft ob Markt für dieses Asset gerade geöffnet ist"""
+        if not self.enabled:
+            return False
+
+        asset_class = self.asset_classes.get(asset, 'forex')
+        hours_config = self.MARKET_HOURS.get(asset_class, self.MARKET_HOURS['forex'])
+
+        now_utc = datetime.now(timezone('UTC'))
+        current_time = now_utc.time()
+        current_weekday = now_utc.weekday()  # Montag=0, Sonntag=6
+
+        # Prüfe Wochentag
+        if current_weekday not in hours_config['weekdays']:
+            return False
+
+        # Prüfe Uhrzeit
+        if hours_config['open'] <= hours_config['close']:
+            # Normaler Tag (z.B. 9-17)
+            if not (hours_config['open'] <= current_time <= hours_config['close']):
+                return False
+        else:
+            # Über Mitternacht (z.B. 22-2)
+            if not (current_time >= hours_config['open'] or current_time <= hours_config['close']):
+                return False
+
+        return True
+
     @abstractmethod
     def calculate_technical_indicators(self, data: pd.DataFrame) -> Dict[str, float]:
-        """
-        Berechnet strategy-spezifische technische Indikatoren
-        
-        Args:
-            data: OHLCV DataFrame
-            
-        Returns:
-            Dict mit technischen Indikatoren
-        """
+        """Berechnet strategy-spezifische technische Indikatoren"""
         pass
-    
+
     @abstractmethod
-    def generate_base_signal(self, symbol: str, market_data: MarketData, 
+    def generate_base_signal(self, symbol: str, market_data: MarketData,
                            technical_indicators: Dict[str, float]) -> Optional[StrategySignal]:
-        """
-        Generiert Basis-Signal ohne AI Consensus
-        
-        Args:
-            symbol: Trading Symbol
-            market_data: Marktdaten
-            technical_indicators: Technische Indikatoren
-            
-        Returns:
-            StrategySignal oder None
-        """
+        """Generiert Basis-Signal ohne AI Consensus"""
         pass
-    
+
     @abstractmethod
     def get_strategy_context(self) -> str:
-        """
-        Returns strategy-spezifischen Context für AI Analysis
-        """
+        """Returns strategy-spezifischen Context für AI Analysis"""
         pass
-    
+
     def analyze_and_signal(self) -> List[StrategySignal]:
         """
         Hauptanalyse-Funktion: Analysiert alle Assets und generiert Signals
         """
         if not self.enabled:
             return []
-        
+
         current_time = time.time()
-        
+
         # Rate Limiting Check
         if current_time - self.last_analysis_time < self.analysis_interval:
             return []
-        
+
         try:
             self.status = StrategyStatus.ACTIVE
             signals = []
-            
+
             for asset in self.assets:
                 try:
+                    if not self._is_market_open(asset):
+                        logger.info(f"Asset {asset} - Markt geschlossen (keine Analyse)")
+                        continue
+
                     signal = self._analyze_single_asset(asset)
                     if signal:
                         signals.append(signal)
+
                 except Exception as e:
                     logger.error(f"Asset Analysis Error {asset}: {e}")
-            
+
             self.last_analysis_time = current_time
             self.recent_signals.extend(signals)
-            
+
             # Nur letzte 10 Signale behalten
             self.recent_signals = self.recent_signals[-10:]
-            
+
             logger.info(f"{self.name}: {len(signals)} Signale generiert")
             return signals
-        
+
         except Exception as e:
             logger.error(f"Strategy Analysis Error {self.name}: {e}")
             self.status = StrategyStatus.ERROR
             return []
-    
+
     def _analyze_single_asset(self, symbol: str) -> Optional[StrategySignal]:
         """Analysiert einzelnes Asset"""
         try:
@@ -179,52 +249,51 @@ class BaseStrategy(ABC):
             market_data = self._get_market_data(symbol)
             if not market_data:
                 return None
-            
+
             # Historical Data für technische Analyse
             historical_data = self._get_historical_data(symbol)
             if historical_data is None or len(historical_data) < 20:
                 logger.warning(f"Insufficient historical data for {symbol}")
                 return None
-            
+
             # Technische Indikatoren berechnen
             technical_indicators = self.calculate_technical_indicators(historical_data)
-            
+
             # Market Data mit technischen Indikatoren erweitern
             market_data.technical_indicators = technical_indicators
-            
+
             # Basis-Signal generieren
             base_signal = self.generate_base_signal(symbol, market_data, technical_indicators)
             if not base_signal:
                 return None
-            
+
             # AI Consensus einholen
             strategy_context = self.get_strategy_context()
             ai_consensus = self.ai_voting_system.get_trading_consensus(market_data, strategy_context)
-            
+
             # AI Consensus in Signal integrieren
             final_signal = self._integrate_ai_consensus(base_signal, ai_consensus)
-            
             self.total_signals += 1
-            
+
             return final_signal
-        
+
         except Exception as e:
             logger.error(f"Single Asset Analysis Error {symbol}: {e}")
             return None
-    def _integrate_ai_consensus(self, base_signal: StrategySignal, 
+
+    def _integrate_ai_consensus(self, base_signal: StrategySignal,
                               ai_consensus: ConsensusSignal) -> StrategySignal:
         """
         Integriert AI Consensus in das Basis-Signal
         """
         # AI Consensus anhängen
         base_signal.ai_consensus = ai_consensus
-        
+
         # Signal nur ausführbar wenn AI Consensus stimmt
         if ai_consensus.is_tradeable and ai_consensus.final_action == base_signal.action:
             # Boost confidence wenn AI zustimmt
             combined_confidence = (base_signal.confidence + ai_consensus.consensus_confidence) / 2
             base_signal.confidence = min(100.0, combined_confidence * 1.1)  # 10% Boost
-            
             # Erweiterte Reasoning
             base_signal.reasoning += f" | AI Consensus: {ai_consensus.action_summary} - {ai_consensus.reasoning[:100]}"
         else:
@@ -232,9 +301,9 @@ class BaseStrategy(ABC):
             base_signal.action = SignalType.HOLD
             base_signal.confidence = min(base_signal.confidence, 40.0)
             base_signal.reasoning += f" | AI Override: {ai_consensus.action_summary}"
-        
+
         return base_signal
-    
+
     def execute_signal(self, signal: StrategySignal) -> Optional[TradeResult]:
         """
         Führt Trading-Signal aus
@@ -242,24 +311,24 @@ class BaseStrategy(ABC):
         if not signal.is_executable:
             logger.info(f"Signal not executable: {signal.action.value} {signal.symbol}")
             return None
-        
+
         current_time = time.time()
-        
+
         # Min Trade Interval Check
         if current_time - self.last_trade_time < self.min_trade_interval:
             logger.info(f"Trade interval not reached: {self.name}")
             return None
-        
+
         try:
             # Account für diese Strategie wechseln
             if not self.capital_api.switch_to_strategy_account(self.name.lower().replace(' ', '_')):
                 logger.error(f"Account switch failed for {self.name}")
                 return None
-            
+
             # Stop Loss und Take Profit Distanzen berechnen
             stop_distance = int(abs(signal.price - signal.stop_loss))
             profit_distance = int(abs(signal.take_profit - signal.price))
-            
+
             # Order platzieren
             trade_result = self.capital_api.place_order(
                 epic=signal.symbol,
@@ -270,79 +339,88 @@ class BaseStrategy(ABC):
                 use_percentage_size=True,
                 percentage=self.max_position_size_percent
             )
-            
+
             if trade_result and trade_result.success:
                 self.executed_trades += 1
                 self.last_trade_time = current_time
                 logger.info(f"Trade executed: {signal.symbol} {signal.action.value} - {trade_result.deal_reference}")
-            
             return trade_result
-        
+
         except Exception as e:
             logger.error(f"Trade Execution Error {self.name}: {e}")
             return None
-    
+
     def _get_market_data(self, symbol: str) -> Optional[MarketData]:
-        """Holt aktuelle Marktdaten für Symbol"""
+        """Holt aktuelle Marktdaten für Symbol mit Fehlerbehandlung"""
         try:
             # Cache Check
             cache_key = f"{symbol}_{int(time.time() / 300)}"  # 5min cache
             if cache_key in self.market_data_cache:
                 return self.market_data_cache[cache_key]
-            
+
             # Hier würdest du echte Market Data API integrieren
-            # Für Demo: Simulierte Daten
+            # Für Demo: Simulierte Daten mit besserer Fehlerbehandlung
             import yfinance as yf
-            
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period="1d", interval="1m")
-            
-            if len(hist) == 0:
+
+            try:
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period="1d", interval="1m")
+
+                if len(hist) == 0:
+                    logger.warning(f"No data returned for {symbol}")
+                    return None
+
+                current_price = float(hist['Close'].iloc[-1])
+                prev_price = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
+                price_change = ((current_price - prev_price) / prev_price) * 100
+                volume = float(hist['Volume'].iloc[-1])
+
+                market_data = MarketData(
+                    symbol=symbol,
+                    current_price=current_price,
+                    price_change_24h=price_change,
+                    volume=volume,
+                    technical_indicators={}
+                )
+
+                # Cache speichern
+                self.market_data_cache[cache_key] = market_data
+                return market_data
+
+            except Exception as e:
+                logger.error(f"YFinance Error for {symbol}: {str(e)}")
                 return None
-            
-            current_price = float(hist['Close'].iloc[-1])
-            prev_price = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
-            price_change = ((current_price - prev_price) / prev_price) * 100
-            volume = float(hist['Volume'].iloc[-1])
-            
-            market_data = MarketData(
-                symbol=symbol,
-                current_price=current_price,
-                price_change_24h=price_change,
-                volume=volume,
-                technical_indicators={}
-            )
-            
-            # Cache speichern
-            self.market_data_cache[cache_key] = market_data
-            
-            return market_data
-        
+
         except Exception as e:
             logger.error(f"Market Data Error {symbol}: {e}")
             return None
-    
+
     def _get_historical_data(self, symbol: str, period: str = "3mo") -> Optional[pd.DataFrame]:
-        """Holt historische Daten für technische Analyse"""
+        """Holt historische Daten für technische Analyse mit Fehlerbehandlung"""
         try:
             import yfinance as yf
-            
-            ticker = yf.Ticker(symbol)
-            data = ticker.history(period=period)
-            
-            if len(data) < 20:
+
+            try:
+                ticker = yf.Ticker(symbol)
+                data = ticker.history(period=period)
+
+                if len(data) < 20:
+                    logger.warning(f"Insufficient historical data for {symbol} (only {len(data)} points)")
+                    return None
+
+                return data
+
+            except Exception as e:
+                logger.error(f"YFinance Historical Data Error for {symbol}: {str(e)}")
                 return None
-            
-            return data
-        
+
         except Exception as e:
             logger.error(f"Historical Data Error {symbol}: {e}")
             return None
-    
+
     def get_performance_stats(self) -> Dict[str, Any]:
         """Performance Statistiken"""
         win_rate = (self.successful_trades / max(1, self.executed_trades)) * 100
-        
         return {
             'strategy_name': self.name,
             'status': self.status.value,
@@ -358,25 +436,25 @@ class BaseStrategy(ABC):
             'recent_signals_count': len(self.recent_signals),
             'active_positions_count': len(self.active_positions)
         }
-    
+
     def update_position_status(self):
         """Aktualisiert Status der aktiven Positionen"""
         try:
             current_positions = self.capital_api.get_positions()
             self.active_positions = current_positions
-            
+
             # PnL tracking (vereinfacht)
             total_pnl = sum(pos.pnl for pos in current_positions)
             self.total_pnl = total_pnl
-        
+
         except Exception as e:
             logger.error(f"Position Update Error {self.name}: {e}")
-    
+
     def pause(self):
         """Pausiert Strategy"""
         self.status = StrategyStatus.PAUSED
         logger.info(f"Strategy {self.name} pausiert")
-    
+
     def resume(self):
         """Setzt Strategy fort"""
         if self.enabled:
