@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Trading AI System v2.0 - Multi-Strategy Dashboard</title>
-    <meta http-equiv="refresh" content="300">
+    <title>🤖 Trading AI System v2.0 Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -16,278 +15,249 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
-            padding: 10px;
+            padding: 20px;
         }
         
         .container {
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
         .header {
-            background: rgba(255,255,255,0.95);
-            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
             border-radius: 15px;
+            margin-bottom: 30px;
             text-align: center;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         
         .header h1 {
-            font-size: 2.5em;
+            color: #2c3e50;
             margin-bottom: 10px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 2.5em;
         }
         
         .header .subtitle {
+            color: #7f8c8d;
             font-size: 1.1em;
-            color: #666;
-            margin-bottom: 15px;
-        }
-        
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 15px;
-            background: rgba(255,255,255,0.7);
-            border-radius: 20px;
-            font-weight: 500;
-        }
-        
-        .status-online { color: #27ae60; }
-        .status-offline { color: #e74c3c; }
-        .status-warning { color: #f39c12; }
-        
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
             margin-bottom: 20px;
         }
         
+        .status-badges {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .badge.running { background: #2ecc71; color: white; }
+        .badge.stopped { background: #e74c3c; color: white; }
+        .badge.trading { background: #f39c12; color: white; }
+        .badge.dry-run { background: #9b59b6; color: white; }
+        .badge.refresh { background: #3498db; color: white; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
         .card {
-            background: rgba(255,255,255,0.95);
-            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
         }
         
         .card h3 {
             color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.3em;
-            border-bottom: 2px solid #ecf0f1;
-            padding-bottom: 8px;
-        }
-        
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
             margin-bottom: 20px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
-        .metric-card {
-            background: rgba(255,255,255,0.95);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        
-        .metric-value {
-            font-size: 2em;
-            font-weight: bold;
-            margin: 8px 0;
-        }
-        
-        .metric-label {
-            color: #666;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .strategies-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .strategy-card {
-            background: rgba(255,255,255,0.95);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-        
-        .strategy-header {
+        .metric {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #ecf0f1;
         }
         
-        .strategy-title {
-            font-size: 1.2em;
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        
+        .metric-value {
             font-weight: bold;
             color: #2c3e50;
         }
         
-        .strategy-status {
-            padding: 4px 12px;
-            border-radius: 15px;
+        .strategy-card {
+            border-left: 5px solid #3498db;
+        }
+        
+        .strategy-card.active {
+            border-left-color: #2ecc71;
+        }
+        
+        .strategy-card.error {
+            border-left-color: #e74c3c;
+        }
+        
+        .assets-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .asset-tag {
+            background: #ecf0f1;
+            color: #2c3e50;
+            padding: 4px 8px;
+            border-radius: 12px;
             font-size: 0.8em;
-            font-weight: bold;
-            text-transform: uppercase;
         }
         
-        .status-active { background: #d5f4e6; color: #27ae60; }
-        .status-inactive { background: #ffeaa7; color: #fdcb6e; }
-        .status-error { background: #fab1a0; color: #e17055; }
-        
-        .strategy-assets {
-            margin: 10px 0;
-            font-size: 0.9em;
-            color: #666;
-        }
-        
-        .strategy-performance {
+        .ai-status {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .perf-item {
-            text-align: center;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        
-        .perf-value {
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 2px;
-        }
-        
-        .perf-label {
-            font-size: 0.8em;
-            color: #666;
-        }
-        
-        .ai-voting-section {
-            background: rgba(255,255,255,0.95);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-        
-        .ai-providers {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-top: 15px;
         }
         
-        .provider-card {
+        .ai-provider {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 10px;
-            border-left: 4px solid #3498db;
-        }
-        
-        .provider-name {
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-        
-        .provider-stats {
-            font-size: 0.9em;
-            color: #666;
-        }
-        
-        .trades-section {
-            background: rgba(255,255,255,0.95);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-        
-        .trade-item {
-            background: #f8f9fa;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 8px;
-            border-left: 4px solid #3498db;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .trade-buy { border-left-color: #27ae60; }
-        .trade-sell { border-left-color: #e74c3c; }
-        
-        .trade-info {
-            flex: 1;
-        }
-        
-        .trade-meta {
-            font-size: 0.8em;
-            color: #666;
-            text-align: right;
-        }
-        
-        .footer {
             text-align: center;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255,255,255,0.9);
-            border-radius: 15px;
-            color: #666;
+        }
+        
+        .ai-provider.active {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+        
+        .ai-provider.inactive {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+        
+        .trades-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .trades-table th,
+        .trades-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .trades-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .action-buy { color: #28a745; font-weight: bold; }
+        .action-sell { color: #dc3545; font-weight: bold; }
+        .action-hold { color: #ffc107; font-weight: bold; }
+        
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn.danger {
+            background: #e74c3c;
+        }
+        
+        .btn.danger:hover {
+            background: #c0392b;
+        }
+        
+        .version-info {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
         }
         
         .refresh-info {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
             font-size: 0.9em;
         }
         
         @media (max-width: 768px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .strategies-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .status-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
             .header h1 {
-                font-size: 1.8em;
+                font-size: 2em;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-badges {
+                flex-direction: column;
+                align-items: center;
             }
         }
     </style>
@@ -297,178 +267,248 @@
         <!-- Header -->
         <div class="header">
             <h1>🤖 Trading AI System v2.0</h1>
-            <div class="subtitle">Multi-Strategy Trading mit AI Consensus Voting</div>
-            
-            <div class="status-bar">
-                <div class="status-item">
-                    <span class="{{ 'status-online' if status.system.running else 'status-offline' }}">●</span>
-                    System: {{ 'RUNNING' if status.system.running else 'STOPPED' }}
-                </div>
-                
-                <div class="status-item">
-                    <span>⏱️</span>
-                    Uptime: {{ "%.1f"|format(status.system.uptime_hours) }}h
-                </div>
-                
-                <div class="status-item">
-                    <span>🧠</span>
-                    AI Consensus: {{ "%.1f"|format(status.ai_voting.consensus_rate|default(0)) }}%
-                </div>
-                
-                <div class="status-item">
-                    <span>📊</span>
-                    Next Analysis: {{ "%.0f"|format(status.system.next_analysis_minutes|default(0)) }}min
-                </div>
-                
-                <div class="status-item">
-                    <span>{{ '🟢' if not status.config.dry_run_mode else '🟡' }}</span>
-                    {{ 'LIVE TRADING' if not status.config.dry_run_mode else 'DRY RUN' }}
-                </div>
-            </div>
-        </div>
-        
-        <!-- Metrics Grid -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-value status-online">{{ status.system.analysis_count|default(0) }}</div>
-                <div class="metric-label">Analysen</div>
+            <div class="subtitle">
+                Multi-Strategy AI Trading Bot mit automatischem API Refresh
             </div>
             
-            <div class="metric-card">
-                <div class="metric-value status-online">{{ status.system.trade_count|default(0) }}</div>
-                <div class="metric-label">Trades</div>
-            </div>
-            
-            <div class="metric-card">
-                <div class="metric-value {{ 'status-online' if status.system.error_count|default(0) == 0 else 'status-offline' }}">
-                    {{ status.system.error_count|default(0) }}
+            {% if status.error %}
+                <div class="error-message">
+                    <strong>System Error:</strong> {{ status.error }}
                 </div>
-                <div class="metric-label">Errors</div>
-            </div>
-            
-            <div class="metric-card">
-                <div class="metric-value status-online">{{ status.strategies|length|default(0) }}</div>
-                <div class="metric-label">Aktive Strategien</div>
-            </div>
-        </div>
-        
-        <!-- AI Voting Section -->
-        {% if status.ai_voting %}
-        <div class="ai-voting-section">
-            <h3>🧠 AI Consensus Voting System</h3>
-            <div class="ai-providers">
-                {% for provider_stat in status.ai_voting.provider_stats|default([]) %}
-                <div class="provider-card">
-                    <div class="provider-name">{{ provider_stat.name }}</div>
-                    <div class="provider-stats">
-                        Requests: {{ provider_stat.request_count|default(0) }}<br>
-                        Success Rate: {{ "%.1f"|format(provider_stat.success_rate|default(0)) }}%<br>
-                        {% if provider_stat.last_request_time > 0 %}
-                        Last Request: {{ ((status.timestamp | string | replace('T', ' ') | replace('-', '/'))[:19]) }}
+            {% else %}
+                <div class="status-badges">
+                    {% if status.system.running %}
+                        <span class="badge running">✅ AKTIV</span>
+                    {% else %}
+                        <span class="badge stopped">🛑 GESTOPPT</span>
+                    {% endif %}
+                    
+                    {% if status.config.trading_enabled %}
+                        {% if status.config.dry_run_mode %}
+                            <span class="badge dry-run">🧪 DRY RUN</span>
+                        {% else %}
+                            <span class="badge trading">💰 LIVE TRADING</span>
                         {% endif %}
-                    </div>
+                    {% endif %}
+                    
+                    <span class="badge refresh">🔄 AUTO API REFRESH</span>
+                    <span class="badge">Demo Accounts #2-#5</span>
                 </div>
-                {% endfor %}
+            {% endif %}
+        </div>
+
+        {% if not status.error %}
+        <!-- System Overview -->
+        <div class="grid">
+            <div class="card">
+                <h3>⚡ System Metriken</h3>
+                <div class="metric">
+                    <span class="metric-label">Laufzeit</span>
+                    <span class="metric-value">{{ "%.1f"|format(status.system.uptime_hours) }} Stunden</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Analysen</span>
+                    <span class="metric-value">{{ status.system.analysis_count }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Trades</span>
+                    <span class="metric-value">{{ status.system.trade_count }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Fehler</span>
+                    <span class="metric-value">{{ status.system.error_count }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Letzte Analyse</span>
+                    <span class="metric-value">
+                        {% if status.system.last_analysis %}
+                            {{ status.system.last_analysis.split('T')[1].split('.')[0] }}
+                        {% else %}
+                            Noch keine
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Nächste Analyse</span>
+                    <span class="metric-value">{{ "%.1f"|format(status.system.next_analysis_minutes) }} Min</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🧠 AI Voting System</h3>
+                {% if status.ai_voting %}
+                    <div class="ai-status">
+                        <div class="ai-provider active">
+                            <strong>🤗 HuggingFace</strong><br>
+                            <small>{{ status.ai_voting.providers.HuggingFace.requests if status.ai_voting.providers and status.ai_voting.providers.HuggingFace else 0 }} Requests</small>
+                        </div>
+                        <div class="ai-provider active">
+                            <strong>🌟 Gemini</strong><br>
+                            <small>{{ status.ai_voting.providers.Gemini.requests if status.ai_voting.providers and status.ai_voting.providers.Gemini else 0 }} Requests</small>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Consensus Rate</span>
+                        <span class="metric-value">{{ status.ai_voting.consensus_rate if status.ai_voting.consensus_rate else 0 }}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Confidence Threshold</span>
+                        <span class="metric-value">{{ status.config.ai_confidence_threshold }}%</span>
+                    </div>
+                {% else %}
+                    <div class="error-message">AI Voting System nicht verfügbar</div>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
-        
-        <!-- Strategies Grid -->
-        <div class="strategies-grid">
+
+        <!-- Trading Strategies -->
+        <div class="grid">
             {% for strategy_name, strategy in status.strategies.items() %}
-            <div class="strategy-card">
-                <div class="strategy-header">
-                    <div class="strategy-title">{{ strategy.name }}</div>
-                    <div class="strategy-status status-{{ strategy.status.lower() }}">
-                        {{ strategy.status }}
-                    </div>
-                </div>
+            <div class="card strategy-card {% if strategy.enabled and strategy.status != 'ERROR' %}active{% elif strategy.status == 'ERROR' %}error{% endif %}">
+                <h3>
+                    📊 {{ strategy.name }}
+                    {% if strategy.enabled %}
+                        <span style="color: #2ecc71;">✅</span>
+                    {% else %}
+                        <span style="color: #e74c3c;">❌</span>
+                    {% endif %}
+                </h3>
                 
-                <div class="strategy-assets">
-                    <strong>Assets:</strong> {{ strategy.assets | join(', ') }}
-                </div>
-                
-                <div class="strategy-performance">
-                    <div class="perf-item">
-                        <div class="perf-value">{{ strategy.performance.total_signals|default(0) }}</div>
-                        <div class="perf-label">Signale</div>
+                {% if strategy.error %}
+                    <div class="error-message">{{ strategy.error }}</div>
+                {% else %}
+                    <div class="metric">
+                        <span class="metric-label">Status</span>
+                        <span class="metric-value">{{ strategy.status }}</span>
                     </div>
-                    <div class="perf-item">
-                        <div class="perf-value">{{ strategy.performance.executed_trades|default(0) }}</div>
-                        <div class="perf-label">Trades</div>
+                    <div class="metric">
+                        <span class="metric-label">Account</span>
+                        <span class="metric-value">{{ strategy.account_name }}</span>
                     </div>
-                    <div class="perf-item">
-                        <div class="perf-value">{{ "%.1f"|format(strategy.performance.win_rate|default(0)) }}%</div>
-                        <div class="perf-label">Win Rate</div>
+                    <div class="metric">
+                        <span class="metric-label">Balance</span>
+                        <span class="metric-value">${{ "%.2f"|format(strategy.account_balance) }}</span>
                     </div>
-                </div>
-                
-                {% if strategy.performance.total_pnl %}
-                <div style="margin-top: 10px; text-align: center; font-weight: bold; 
-                           color: {{ '#27ae60' if strategy.performance.total_pnl > 0 else '#e74c3c' }};">
-                    PnL: {{ "%.2f"|format(strategy.performance.total_pnl) }}
-                </div>
+                    <div class="metric">
+                        <span class="metric-label">Assets</span>
+                        <div class="assets-list">
+                            {% for asset in strategy.assets %}
+                                <span class="asset-tag">{{ asset }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    {% if strategy.api_last_refresh %}
+                    <div class="refresh-info">
+                        <strong>🔄 API Last Refresh:</strong> {{ strategy.api_last_refresh.split('T')[1].split('.')[0] if 'T' in strategy.api_last_refresh else strategy.api_last_refresh }}
+                    </div>
+                    {% endif %}
                 {% endif %}
             </div>
             {% endfor %}
         </div>
-        
+
         <!-- Recent Trades -->
-        <div class="trades-section">
-            <h3>📈 Recent Trades (Last 10)</h3>
-            {% if status.recent_trades %}
-                {% for trade in status.recent_trades[:10] %}
-                <div class="trade-item trade-{{ trade.action.lower() }}">
-                    <div class="trade-info">
-                        <strong>{{ trade.symbol }} - {{ trade.action }}</strong><br>
-                        <small>{{ trade.strategy_name }} | Size: {{ trade.position_size }} | Conf: {{ "%.0f"|format(trade.confidence) }}%</small>
-                    </div>
-                    <div class="trade-meta">
-                        {{ trade.timestamp[:16].replace('T', ' ') }}<br>
-                        {% if trade.deal_reference %}
-                        <small>{{ trade.deal_reference[:8] }}...</small>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p style="text-align: center; color: #666; padding: 20px;">
-                    Noch keine Trades ausgeführt.
-                </p>
-            {% endif %}
+        {% if status.recent_trades %}
+        <div class="card">
+            <h3>💼 Aktuelle Trades</h3>
+            <table class="trades-table">
+                <thead>
+                    <tr>
+                        <th>Zeit</th>
+                        <th>Strategie</th>
+                        <th>Symbol</th>
+                        <th>Aktion</th>
+                        <th>Preis</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in status.recent_trades[:10] %}
+                    <tr>
+                        <td>{{ trade.timestamp.split('T')[1].split('.')[0] if 'T' in trade.timestamp else trade.timestamp }}</td>
+                        <td>{{ trade.strategy_name }}</td>
+                        <td>{{ trade.symbol }}</td>
+                        <td class="action-{{ trade.action.lower() }}">{{ trade.action }}</td>
+                        <td>${{ "%.4f"|format(trade.price) }}</td>
+                        <td>{{ trade.status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        
-        <!-- Footer -->
-        <div class="footer">
-            <div class="refresh-info">
-                <span>🔄</span>
-                Auto-Refresh: 5min | 
-                <span>⏰</span>
-                Last Update: {{ status.timestamp[:19].replace('T', ' ') }} | 
-                <span>🎯</span>
-                <a href="/logs" style="color: #3498db; text-decoration: none;">View Logs</a> |
-                <span>📊</span>
-                <a href="/api/status" style="color: #3498db; text-decoration: none;">API Status</a>
-            </div>
-            
-            <div style="margin-top: 10px; font-size: 0.8em;">
-                <strong>Trading AI System v2.0</strong> - 
-                4 Strategies, 2 AI Providers, Multi-Account Management<br>
-                ⚠️ <em>Educational purposes only. Use only Demo Accounts.</em>
-            </div>
+        {% endif %}
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn" onclick="triggerAnalysis()">🔄 Manual Analysis</button>
+            <button class="btn" onclick="refreshDashboard()">📊 Refresh Dashboard</button>
+            <a href="/logs" class="btn">📝 View Logs</a>
+            <a href="/api/status" class="btn">🔗 API Status</a>
+        </div>
+
+        {% endif %}
+
+        <!-- Version Info -->
+        <div class="version-info">
+            <strong>Trading AI System v2.0.0</strong> - Auto API Refresh, Corrected Yahoo Finance Tickers, Thread-safe Operations<br>
+            Demo Accounts: #2 (Trend Following), #3 (Mean Reversion), #4 (Breakout), #5 (News Trading)<br>
+            Features: HuggingFace + Gemini AI, Capital.com Integration, SQLite Database<br>
+            Last Update: {{ status.timestamp.split('T')[0] if status.timestamp else 'Unknown' }}
         </div>
     </div>
-    
+
     <script>
-        // Auto-refresh fallback
-        setTimeout(() => {
+        function triggerAnalysis() {
+            fetch('/api/analysis', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`✅ Analysis erfolgreich!\n\nSignale: ${data.total_signals}\nTrades: ${data.executed_trades}\nAI Consensus: ${data.ai_consensus_rate}%`);
+                        setTimeout(refreshDashboard, 2000);
+                    } else {
+                        alert(`❌ Analysis Error: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    alert(`❌ Network Error: ${error}`);
+                });
+        }
+
+        function refreshDashboard() {
             window.location.reload();
-        }, 300000); // 5 minutes
-        
-        // Show loading indicator on manual refresh
-        window.addEventListener('beforeunload', () => {
-            document.body.style.opacity = '0.7';
-        });
+        }
+
+        // Auto-refresh every 2 minutes
+        setInterval(refreshDashboard, 120000);
+
+        // Status indicator
+        function updateConnectionStatus() {
+            fetch('/health')
+                .then(response => response.json())
+                .then(data => {
+                    const indicator = document.getElementById('status-indicator') || createStatusIndicator();
+                    indicator.style.backgroundColor = data.status === 'healthy' ? '#2ecc71' : '#e74c3c';
+                    indicator.title = `System ${data.status} - Version ${data.version}`;
+                })
+                .catch(() => {
+                    const indicator = document.getElementById('status-indicator') || createStatusIndicator();
+                    indicator.style.backgroundColor = '#e74c3c';
+                    indicator.title = 'Connection Error';
+                });
+        }
+
+        function createStatusIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'status-indicator';
+            indicator.style.cssText = 'position:fixed;top:20px;right:20px;width:15px;height:15px;border-radius:50%;z-index:1000;';
+            document.body.appendChild(indicator);
+            return indicator;
+        }
+
+        // Check status every 30 seconds
+        updateConnectionStatus();
+        setInterval(updateConnectionStatus, 30000);
     </script>
 </body>
 </html>
