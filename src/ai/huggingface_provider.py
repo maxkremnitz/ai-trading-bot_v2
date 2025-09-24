@@ -170,7 +170,8 @@ class HuggingFaceProvider(BaseAIProvider):
         except Exception as e:
             logger.error(f"Sentiment Query Error: {e}")
             return None
-        def _interpret_huggingface_result(self, result: Dict, original_text: str) -> tuple[SignalType, float, str]:
+    
+    def _interpret_huggingface_result(self, result: Dict, original_text: str) -> tuple[SignalType, float, str]:
         """
         Interpretiert HuggingFace Model Response
         """
@@ -248,6 +249,10 @@ class HuggingFaceProvider(BaseAIProvider):
             else:
                 logger.error("HuggingFace API Test fehlgeschlagen")
                 return False
+        
+        except Exception as e:
+            logger.error(f"HuggingFace Connection Test Error: {e}")
+            return False
         
         except Exception as e:
             logger.error(f"HuggingFace Connection Test Error: {e}")
