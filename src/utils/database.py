@@ -172,61 +172,63 @@ class DatabaseManager:
             raise
     
     @safe_db_operation
-    def save_strategy_analysis(self, strategy_name: str, symbol: str, signal_data: Dict[str, Any], 
+    def save_strategy_analysis(self, strategy_name: str, symbol: str, signal_data: Dict[str, Any],
                               technical_data: Dict[str, float], ai_consensus: Optional[Dict] = None):
         """Speichert Strategy Analysis"""
         try:
             with self.get_connection() as conn:
-                conn.execute("""
-                    INSERT INTO strategy_analysis 
-                    (timestamp, strategy_name, symbol, current_price, signal_type, confidence, 
-                     technical_data, ai_consensus, reasoning)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    datetime.now().isoformat(),
-                    strategy_name,
-                    symbol,
-                    signal_data.get('price', 0),
-                    signal_data.get('action', 'HOLD'),
-                    signal_data.get('confidence', 0),
-                    json.dumps(technical_data),
-                    json.dumps(ai_consensus) if ai_consensus else None,
-                    signal_data.get('reasoning', '')
-                ))
-                conn.commit()
-                
+                if conn:
+                    conn.execute("""
+                        INSERT INTO strategy_analysis
+                        (timestamp, strategy_name, symbol, current_price, signal_type, confidence,
+                         technical_data, ai_consensus, reasoning)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        datetime.now().isoformat(),
+                        strategy_name,
+                        symbol,
+                        signal_data.get('price', 0),
+                        signal_data.get('action', 'HOLD'),
+                        signal_data.get('confidence', 0),
+                        json.dumps(technical_data),
+                        json.dumps(ai_consensus) if ai_consensus else None,
+                        signal_data.get('reasoning', '')
+                    ))
+                    conn.commit()
+                    
         except Exception as e:
             logger.error(f"Save Strategy Analysis Error: {e}")
     
     @safe_db_operation  
-    def save_trade_execution(self, trade_
+    def save_trade_execution(self, trade_data: Dict[str, Any]):
         """Speichert Trade Execution"""
         try:
             with self.get_connection() as conn:
-                conn.execute("""
-                    INSERT INTO trades
-                    (timestamp, strategy_name, symbol, action, price, position_size, 
-                     stop_loss, take_profit, confidence, deal_reference, deal_id, 
-                     account_id, status, result_data)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    datetime.now().isoformat(),
-                    trade_data.get('strategy_name', ''),
-                    trade_data.get('symbol', ''),
-                    trade_data.get('action', ''),
-                    trade_data.get('price', 0),
-                    trade_data.get('position_size', 0),
-                    trade_data.get('stop_loss', 0),
-                    trade_data.get('take_profit', 0),
-                    trade_data.get('confidence', 0),
-                    trade_data.get('deal_reference', ''),
-                    trade_data.get('deal_id', ''),
-                    trade_data.get('account_id', ''),
-                    trade_data.get('status', 'pending'),
-                    json.dumps(trade_data.get('result_data', {}))
-                ))
-                conn.commit()
-                
+                if conn:
+                    conn.execute("""
+                        INSERT INTO trades
+                        (timestamp, strategy_name, symbol, action, price, position_size,
+                         stop_loss, take_profit, confidence, deal_reference, deal_id,
+                         account_id, status, result_data)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        datetime.now().isoformat(),
+                        trade_data.get('strategy_name', ''),
+                        trade_data.get('symbol', ''),
+                        trade_data.get('action', ''),
+                        trade_data.get('price', 0),
+                        trade_data.get('position_size', 0),
+                        trade_data.get('stop_loss', 0),
+                        trade_data.get('take_profit', 0),
+                        trade_data.get('confidence', 0),
+                        trade_data.get('deal_reference', ''),
+                        trade_data.get('deal_id', ''),
+                        trade_data.get('account_id', ''),
+                        trade_data.get('status', 'pending'),
+                        json.dumps(trade_data.get('result_data', {}))
+                    ))
+                    conn.commit()
+                    
         except Exception as e:
             logger.error(f"Save Trade Error: {e}")
     
@@ -235,25 +237,26 @@ class DatabaseManager:
         """Speichert AI Voting Results"""
         try:
             with self.get_connection() as conn:
-                conn.execute("""
-                    INSERT INTO ai_voting
-                    (timestamp, strategy_name, symbol, huggingface_signal, huggingface_confidence,
-                     gemini_signal, gemini_confidence, consensus_result, final_action, processing_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    datetime.now().isoformat(),
-                    voting_data.get('strategy_name', ''),
-                    voting_data.get('symbol', ''),
-                    voting_data.get('hf_signal', ''),
-                    voting_data.get('hf_confidence', 0),
-                    voting_data.get('gemini_signal', ''),
-                    voting_data.get('gemini_confidence', 0),
-                    voting_data.get('consensus_result', ''),
-                    voting_data.get('final_action', ''),
-                    voting_data.get('processing_time', 0)
-                ))
-                conn.commit()
-                
+                if conn:
+                    conn.execute("""
+                        INSERT INTO ai_voting
+                        (timestamp, strategy_name, symbol, huggingface_signal, huggingface_confidence,
+                         gemini_signal, gemini_confidence, consensus_result, final_action, processing_time)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        datetime.now().isoformat(),
+                        voting_data.get('strategy_name', ''),
+                        voting_data.get('symbol', ''),
+                        voting_data.get('hf_signal', ''),
+                        voting_data.get('hf_confidence', 0),
+                        voting_data.get('gemini_signal', ''),
+                        voting_data.get('gemini_confidence', 0),
+                        voting_data.get('consensus_result', ''),
+                        voting_data.get('final_action', ''),
+                        voting_data.get('processing_time', 0)
+                    ))
+                    conn.commit()
+                    
         except Exception as e:
             logger.error(f"Save AI Voting Error: {e}")
     
@@ -262,30 +265,31 @@ class DatabaseManager:
         """Holt recent trades"""
         try:
             with self.get_connection() as conn:
-                query = "SELECT * FROM trades"
-                params = []
-                
-                if strategy_name:
-                    query += " WHERE strategy_name = ?"
-                    params.append(strategy_name)
-                
-                query += " ORDER BY timestamp DESC LIMIT ?"
-                params.append(limit)
-                
-                cursor = conn.execute(query, params)
-                
-                trades = []
-                for row in cursor:
-                    trade = dict(row)
-                    if trade['result_data']:
-                        try:
-                            trade['result_data'] = json.loads(trade['result_data'])
-                        except:
-                            trade['result_data'] = {}
-                    trades.append(trade)
-                
-                return trades
-                
+                if conn:
+                    query = "SELECT * FROM trades"
+                    params = []
+                    
+                    if strategy_name:
+                        query += " WHERE strategy_name = ?"
+                        params.append(strategy_name)
+                    
+                    query += " ORDER BY timestamp DESC LIMIT ?"
+                    params.append(limit)
+                    
+                    cursor = conn.execute(query, params)
+                    
+                    trades = []
+                    for row in cursor:
+                        trade = dict(row)
+                        if trade['result_data']:
+                            try:
+                                trade['result_data'] = json.loads(trade['result_data'])
+                            except:
+                                trade['result_data'] = {}
+                        trades.append(trade)
+                    
+                    return trades
+                    
         except Exception as e:
             logger.error(f"Get Recent Trades Error: {e}")
             return []
